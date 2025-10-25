@@ -1,0 +1,20 @@
+{
+    "ads": [
+        {
+        "id": "default",
+        "sender": "Default Sender",
+        "receiver": "Default Receiver",
+        "content": "<div>Your default ad content here</div>"
+        },
+        {
+        "id": "ad123",
+        "content": "<div>Ad content for ad123</div>"
+        },
+        {
+        "id": "114514",
+        "sender":"世界需要七休日 写给",
+        "receiver":"刘贺",
+        "content":"乐子刘贺，重开吧"
+        }
+    ]
+}

@@ -1,1 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Starfium</title>
 
+  <!-- 页面样式：保持白色卡片占满视口并居中 -->
+  <style>
+    /* 根与页面基础样式 */
+    html, body {
+      height: 100%;               /* 使百分比高度可用 */
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #1872d8;  /* 蓝色背景 */
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      font-weight: 700;
+    }
+
+    /* 容器：固定宽度并垂直填满视口 */
+    .container {
+      width: 600px;               /* 卡片宽度，可按需改 */
+      margin: 0 auto;             /* 水平居中 */
+      padding: 20px;
+      min-height: 100vh;          /* 占满视口高度 */
+      display: flex;
+      align-items: stretch;       /* 允许子元素纵向拉伸 */
+      justify-content: center;
+      box-sizing: border-box;
+    }
+
+    /* 白色卡片主体（header） */
+    .header {
+      background-color: #f4f4f4;  /* 卡片背景 */
+      border-radius: 40px;
+      padding: 30px;
+      width: 100%;
+      flex: 1;                    /* 拉伸填满 .container 的高度 */
+      display: flex;
+      flex-direction: column;
+      justify-content: center;    /* 在卡片内垂直居中内容 */
+      text-align: center;
+      box-sizing: border-box;
+    }
+
+    /* 发送者/接收者样式 */
+    .people {
+      margin: 20px 0;
+      font-size: 2.5em;
+      line-height: 1.2;
+    }
+
+    /* 广告正文样式，保持换行展示 */
+    .text {
+      font-size: 2.1em;
+      color: deepskyblue;
+      white-space: pre-wrap;      /* 保留换行 */
+    }
+
+    /* 错误提示：默认隐藏，显示时添加 .visible */
+    #error-message {
+      display: none;
+      color: #c00;
+      margin-top: 12px;
+    }
+    #error-message.visible { display: block; }
+  </style>
+
+  <!-- 脚本：从 ads.json 读取并根据 URL ?id=... 渲染对应广告 -->
+  <script>
+    /**
+     * 获取 URL 查询参数
+     * @param {string} name 参数名
+     * @returns {string|null}
+     */
+    function getUrlParam(name) {
+      return new URLSearchParams(window.location.search).get(name);
+    }
+
+    /**
+     * 从指定的 JSON 文件中查找 id 对应的条目
+     * 兼容三种常见结构：
+     *  - 数组： [ { id: 'a', ... }, ... ]
+     *  - 包含 ads 字段的对象： { ads: [ ... ] }
+     *  - 以 id 为键的对象： { "a": { id: 'a', ... }, ... }
+     *
+     * @param {string} url JSON 文件路径（相对或绝对）
+     * @param {string} id 要查找的 id
+     * @returns {Promise<Object|null>}
+     */
+    async function findAdById(url, id) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('fetch failed: ' + res.status);
+      const json = await res.json();
+
+      let list = [];
+      if (Array.isArray(json)) {
+        list = json;
+      } else if (Array.isArray(json?.ads)) {
+        list = json.ads;
+      } else if (json && typeof json === 'object') {
+        // 将对象的值转换为数组以便查找（适配以 id 为键的情况）
+        list = Object.values(json);
+      }
+
+      return list.find(item => String(item?.id) === String(id)) ?? null;
+    }
+
+    /**
+     * 页面初始化主函数
+     * - 读取 URL 中的 id 参数
+     * - 加载 ads.json 并查找对应条目
+     * - 渲染到页面；加载或查找失败时展示提示
+     */
+    async function init() {
+      const id = getUrlParam('id');                    // 从地址栏读取 id
+      const peopleEl = document.querySelector('.people');
+      const textEl = document.querySelector('.text');
+      const errEl = document.getElementById('error-message');
+
+      // 若未提供 id，则显示说明性占位内容
+      if (!id) {
+        if (peopleEl) peopleEl.innerHTML = '示例发送者 写给<br>示例接收者';
+        if (textEl) textEl.textContent = '请在 URL 添加 ?id=yourId 来展示对应广告内容';
+        return;
+      }
+
+      try {
+        // 在项目根目录查找 ads.json（确保通过 http(s) 服务器访问以避免 file:// 限制）
+        const ad = await findAdById('ads.json', id);
+
+        if (!ad) {
+          // 未找到对应 id，显示提示并返回
+          if (errEl) { errEl.textContent = '未找到对应 id 的广告：' + id; errEl.classList.add('visible'); }
+          if (peopleEl) peopleEl.innerHTML = '—';
+          if (textEl) textEl.textContent = '';
+          return;
+        }
+
+        // 渲染广告数据到 DOM，使用 nullish 合并避免显示 "undefined"
+        if (peopleEl) peopleEl.innerHTML = `${ad.sender ?? ''} 写给<br>${ad.receiver ?? ''}`;
+        if (textEl) textEl.textContent = ad.content ?? '';
+        document.title = `Starfium - ${id}`;  // 更新页面标题
+      } catch (e) {
+        // 加载或解析失败处理
+        if (errEl) { errEl.textContent = '加载 ads.json 失败'; errEl.classList.add('visible'); }
+        console.error(e);
+        if (peopleEl) peopleEl.innerHTML = '示例发送者 写给<br>示例接收者';
+        if (textEl) textEl.textContent = '加载数据失败';
+      }
+    }
+
+    // 在 DOM 完成加载后运行 init
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</head>
+<body>
+  <!-- 页面结构：一个居中的卡片 -->
+  <div class="container">
+    <div class="header">
+      <!-- 发送者和接收者 -->
+      <div class="people"></div>
+
+      <!-- 广告正文 -->
+      <div class="text"></div>
+
+      <!-- 错误提示（通过 JS 控制显示） -->
+      <div id="error-message" role="alert" aria-live="polite"></div>
+    </div>
+  </div>
+</body>
+</html>

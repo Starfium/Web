@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>河南高考倒计时</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f5f5f5;
+            margin: 20px;
+            overflow-x: auto; /* 允许横向滚动 */
+        }
+        .countdown {
+            font-size: 48px;
+            font-weight: bold;
+            color: #e74c3c;
+            margin: 20px 0;
+            padding: 10px;
+            text-align: center;
+        }
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(42, 30px); /* 42列，每列30px */
+            grid-template-rows: repeat(auto, 30px); /* 行高30px */
+            gap: 1px;
+            margin-top: 10px;
+        }
+        .calendar div {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #ddd;
+            background-color: #fff;
+            font-size: 12px;
+            cursor: default;
+        }
+        .calendar div.past {
+            color: #999;
+            background-color: #f9f9f9;
+        }
+        .calendar div.today {
+            background-color: #3498db;
+            color: #fff;
+            font-weight: bold;
+        }
+        .calendar div.exam-day {
+            background-color: #e74c3c;
+            color: #fff;
+            font-weight: bold;
+        }
+        .week-header {
+            font-weight: bold;
+            background-color: #ecf0f1 !important;
+        }
+        .month-label {
+            grid-column: span 7; /* 每月标签跨7列 */
+            background-color: #f1c40f !important;
+            font-weight: bold;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <h3>河南地区高考倒计时（2025级高一学生）</h3>
+    <div class="countdown" id="countdown">000天 00:00:00</div>
+    <div class="calendar" id="calendar"></div>
+
+    <script>
+        // 河南2025级高一学生高考时间：2028年6月7日 09:00:00
+        const examTime = new Date(2028, 5, 7, 9, 0, 0);
+        // 日历起始时间：2025年9月1日（高一开学）
+        const startDate = new Date(2025, 8, 1);
+        const today = new Date();
+
+        // 倒计时函数
+        function updateCountdown() {
+            const now = new Date();
+            const diff = examTime - now;
+
+            if (diff <= 0) {
+                document.getElementById('countdown').textContent = '高考进行中！';
+                return;
+            }
+
+            // 计算天、时、分、秒
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+            // 补零显示
+            const formatTime = (num) => num.toString().padStart(2, '0');
+            document.getElementById('countdown').textContent = 
+                `${days.toString().padStart(3, '0')}天 ${formatTime(hours)}:${formatTime(minutes)}:${formatTime(seconds)}`;
+        }
+
+        // 生成日历（42列，每列30px）
+        function generateCalendar() {
+            const calendarEl = document.getElementById('calendar');
+            const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+            
+            // 添加星期头部（42列 = 6周 × 7天）
+            for (let i = 0; i < 6; i++) { // 重复6次星期头部
+                weekDays.forEach(day => {
+                    const div = document.createElement('div');
+                    div.textContent = day;
+                    div.classList.add('week-header');
+                    calendarEl.appendChild(div);
+                });
+            }
+
+            let currentDate = new Date(startDate);
+            let currentMonth = currentDate.getMonth();
+            
+            // 添加起始月标签
+            const firstMonthLabel = document.createElement('div');
+            firstMonthLabel.textContent = `${currentDate.getFullYear()}年${currentDate.getMonth() + 1}月`;
+            firstMonthLabel.classList.add('month-label');
+            calendarEl.appendChild(firstMonthLabel);
+
+            // 计算起始日期是星期几（0-6，0是周日）
+            const startDay = currentDate.getDay();
+            
+            // 填充起始日前的空白
+            for (let i = 0; i < startDay; i++) {
+                const div = document.createElement('div');
+                calendarEl.appendChild(div);
+            }
+
+            // 生成日历内容，直到高考结束后1周
+            const endDate = new Date(2028, 5, 15);
+            while (currentDate <= endDate) {
+                // 每月第一天添加月份标签
+                if (currentDate.getDate() === 1 && currentDate > startDate) {
+                    const monthLabel = document.createElement('div');
+                    monthLabel.textContent = `${currentDate.getFullYear()}年${currentDate.getMonth() + 1}月`;
+                    monthLabel.classList.add('month-label');
+                    calendarEl.appendChild(monthLabel);
+                }
+
+                const div = document.createElement('div');
+                div.textContent = currentDate.getDate(); // 只显示日期数字
+
+                // 判断是否为高考日
+                if (currentDate.getFullYear() === examTime.getFullYear() &&
+                    currentDate.getMonth() === examTime.getMonth() &&
+                    currentDate.getDate() === examTime.getDate()) {
+                    div.classList.add('exam-day');
+                }
+                // 判断是否为过去日期
+                else if (currentDate < new Date(today.getFullYear(), today.getMonth(), today.getDate())) {
+                    div.classList.add('past');
+                }
+                // 判断是否为今天
+                else if (currentDate.toDateString() === today.toDateString()) {
+                    div.classList.add('today');
+                }
+
+                calendarEl.appendChild(div);
+
+                // 下一天
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+        }
+
+        // 初始化
+        updateCountdown();
+        setInterval(updateCountdown, 1000);
+        generateCalendar();
+    </script>
+</body>
+</html>
